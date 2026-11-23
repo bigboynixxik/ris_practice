@@ -1,0 +1,37 @@
+{
+  "laureates": [
+    {
+      "id": "1",
+      "firstname": "Wilhelm Conrad",
+      "surname": "Röntgen",
+      "born": "1845-03-27",
+      "bornCountry": "Prussia (now Germany)",
+      "bornCountryCode": "DE",
+      "prizes": [
+        {"year": "1901", "category": "physics", "share": "1", "affiliations": [{"name": "Munich University", "city": "Munich", "country": "Germany"}]}
+      ]
+    },
+    {
+      "id": "2",
+      "firstname": "Hendrik Antoon",
+      "surname": "Lorentz",
+      "born": "1853-07-18",
+      "bornCountry": "the Netherlands",
+      "bornCountryCode": "NL",
+      "prizes": [
+        {"year": "1902", "category": "physics", "share": "2"}
+      ]
+    },
+    {
+      "id": "6",
+      "firstname": "Albert",
+      "surname": "Einstein",
+      "born": "1879-03-14",
+      "bornCountry": "Germany",
+      "bornCountryCode": "DE",
+      "prizes": [
+        {"year": "1921", "category": "physics", "share": "1"}
+      ]
+    }
+  ]
+}

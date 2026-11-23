@@ -1,0 +1,7 @@
+*.exe
+*.log
+.env
+storage/
+.ris-work/
+/пр[1-4]/
+/пр[1-4].zip
