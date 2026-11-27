@@ -13,10 +13,9 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"ris/internal/models"
 	"ris/internal/repository/postgres"
 	"ris/internal/service"
-	"ris/internal/transport/nobel"
+	"ris/internal/transport/cli"
 	"ris/pkg/closer"
 	"ris/pkg/config"
 	"ris/pkg/logger"
@@ -137,37 +136,14 @@ func (a *App) Run(ctx context.Context) (runErr error) {
 		log.InfoContext(ctx, "application stopped")
 		return nil
 	}
-	log.InfoContext(ctx, "dataset loading started", "url", a.cfg.SourceURL, "file", a.cfg.JSONFile)
-
 	laureates := service.NewLaureates(postgres.NewLaureatesRepo(pool), postgres.NewTxManager(pool))
-	count, err := a.loadDataset(ctx, laureates)
+	handler := cli.NewHandler(a.client, laureates, a.cfg.SourceURL, a.cfg.JSONFile)
+	_, err = handler.Load(ctx)
 	if err != nil {
 		if errors.Is(err, context.Canceled) && ctx.Err() != nil {
-			log.InfoContext(ctx, "dataset loading canceled")
 			return nil
 		}
-		log.ErrorContext(ctx, "dataset loading failed", "error", err)
 		return fmt.Errorf("app.Run load dataset: %w", err)
 	}
-	log.InfoContext(ctx, "dataset loading finished", "laureates", count)
 	return nil
-}
-
-func (a *App) loadDataset(ctx context.Context, laureates *service.Laureates) (int, error) {
-	var records []models.Laureate
-	var err error
-	if a.cfg.JSONFile != "" {
-		records, err = nobel.ReadFile(ctx, a.cfg.JSONFile)
-	} else {
-		records, err = nobel.Download(ctx, a.client, a.cfg.SourceURL)
-	}
-	if err != nil {
-		return 0, fmt.Errorf("app.loadDataset read laureates: %w", err)
-	}
-	logger.FromContext(ctx).InfoContext(ctx, "dataset decoded", "laureates", len(records))
-
-	if err := laureates.SaveDataset(ctx, records); err != nil {
-		return 0, fmt.Errorf("app.loadDataset save laureates: %w", err)
-	}
-	return len(records), nil
 }
