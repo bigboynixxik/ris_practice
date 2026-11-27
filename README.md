@@ -1,35 +1,92 @@
 # Разработка интеграционных систем
 
-## Практическая работа №1 — импорт JSON
+## Практическая работа № 1 — загрузка JSON в PostgreSQL
 
-Go-утилита скачивает JSON из Nobel Prize API v1, сохраняет лауреатов, премии и организации в PostgreSQL и пишет ход импорта в `import.log`.
+Приложение загружает JSON по заданному URL или из локального файла, сохраняет лауреатов Нобелевской премии, их премии и организации в PostgreSQL и ведёт лог-файл.
 
 ### Запуск
 
-Требуются Go 1.26.7 и Docker Compose. Команды выполняются из корня проекта.
+Нужны Docker Desktop с Linux-контейнерами и Docker Compose. Скопируйте настройки в `.env`:
 
 ```powershell
-docker compose up -d --wait postgres
-go run ./cmd/import
+Copy-Item .env.example .env
 ```
 
-Первый запуск применяет миграции Goose автоматически. По умолчанию используется `https://api.nobelprize.org/v1/laureate.json`. Доступные параметры:
+В примере заполнены все настройки: подключение к PostgreSQL внутри Docker, адрес Nobel Prize API, путь к тестовому JSON, файл логов и таймауты. Их можно изменить в `.env`.
 
-```powershell
-go run ./cmd/import -help
-go run ./cmd/import -url http://127.0.0.1:8000/laureates.json -log import.log
+```sh
+docker compose up --build
 ```
 
-Вторая команда предназначена для локального примера. В отдельном терминале его можно раздать командой `python -m http.server 8000 --bind 127.0.0.1 --directory examples`. В примере три лауреата. Настройки PostgreSQL можно переопределить переменной `RIS_DATABASE_URL` или флагом `-dsn`.
+Compose запускает PostgreSQL, дожидается успешной проверки его готовности и запускает приложение. Отдельная команда с `--wait postgres` не нужна. Приложение применяет миграции, выводит `application ready` и продолжает работать до остановки контейнера.
 
-### Проверка
+Команды загрузки выполняйте в другом терминале, когда приложение готово. Каждая команда загружает один набор данных; сообщение `dataset loading finished` означает успешное завершение загрузки. Основной процесс приложения при этом продолжает работать.
 
-```powershell
-docker compose exec postgres psql -U ris -d ris -c "SELECT id, first_name, last_name, country_code FROM laureates ORDER BY id LIMIT 10"
-docker compose exec postgres psql -U ris -d ris -c "SELECT (SELECT count(*) FROM laureates) AS laureates, (SELECT count(*) FROM prizes) AS prizes, (SELECT count(*) FROM affiliations) AS affiliations, last_updated FROM dataset_metadata"
-Get-Content import.log -Tail 10
+Для остановки нажмите Ctrl+C и выполните:
+
+```sh
+docker compose down
 ```
 
-При повторном импорте записи сопоставляются по идентификатору источника, премии и организации обновляются в той же транзакции. Ошибка загрузки, разбора или сохранения приводит к ненулевому коду выхода.
+### Команды Makefile
 
-Источник данных — [Nobel Prize API v1](https://nobelprize.readme.io/reference/laureate).
+Для этих команд нужен GNU Make. Для тестов дополнительно требуется Go 1.26.7, для линтера — golangci-lint версии 2.
+
+| Команда | Действие |
+| --- | --- |
+| `make up` | Поднять приложение и PostgreSQL через Docker |
+| `make down` | Остановить контейнеры |
+| `make demo-url` | Скачать и сохранить JSON по ссылке |
+| `make demo-json` | Загрузить файл `examples/laureates.json` |
+| `make db-clear` | Удалить загруженные данные |
+| `make db-status` | Показать количество записей |
+| `make lint` | Запустить линтер |
+| `make test` | Запустить обычные тесты |
+| `make test-integration` | Запустить интеграционные тесты с Testcontainers |
+
+### Примеры загрузки
+
+Сначала поднимите приложение командой `make up`. Команды `demo-url` и `demo-json` выполняются через `docker compose exec` в уже работающем контейнере и сами контейнеры не запускают.
+
+По заданию требуется скачать JSON по URL. Команда использует адрес `SOURCE_URL` из настроек:
+
+```sh
+make demo-url
+```
+
+Другой адрес можно передать параметром `URL`. Ответ должен иметь структуру Nobel Prize API v1 с массивом `laureates`.
+
+```sh
+make demo-url URL=https://api.nobelprize.org/v1/laureate.json
+```
+
+Для проверки на небольшом локальном файле:
+
+```sh
+make demo-json
+```
+
+На пустой базе контрольный файл создаёт 3 лауреатов, 3 записи о премиях и 1 запись об организации. Файл доступен в контейнере по пути `/app/examples/laureates.json`. Команда загрузки по ссылке использует `SOURCE_URL` независимо от значения `JSON_FILE`.
+
+### Логи
+
+Журнал сохраняется на компьютере в `Практики/logs/ris.log`. Новые события дописываются в конец файла.
+
+### Очистка и повторная загрузка
+
+После первой загрузки можно очистить данные и показать работу приложения заново:
+
+```sh
+make db-clear
+make db-status
+make demo-json
+make db-status
+```
+
+После очистки счётчики равны нулю, после загрузки контрольного файла — `3 / 3 / 1`. Повторный `make demo-json` обновляет записи без дублирования.
+
+Для повторной демонстрации скачивания по URL выполните `make db-clear`, затем `make demo-url`.
+
+### Интеграционные тесты
+
+Команда `make test-integration` требует доступный Docker Desktop. Для каждого теста Testcontainers создаёт PostgreSQL 17, применяет миграции и удаляет контейнер после проверки. Проверяются откат при ошибке, одновременные загрузки, обновление записей, отмена транзакции и работа приложения до остановки. Основной стек для этих тестов поднимать не требуется.

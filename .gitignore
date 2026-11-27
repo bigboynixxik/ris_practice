@@ -1,7 +1,9 @@
 *.exe
 *.log
+logs/
 .env
 storage/
 .ris-work/
 /пр[1-4]/
 /пр[1-4].zip
+/Отчёт_ПР[1-4].docx

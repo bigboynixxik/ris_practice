@@ -1,0 +1,9 @@
+.git
+.env
+.ris-work
+logs
+пр1
+*.docx
+*.exe
+*.log
+*.zip

@@ -9,8 +9,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-
-	"ris/internal/models"
 )
 
 type roundTrip func(*http.Request) (*http.Response, error)
@@ -51,6 +49,9 @@ func TestDownloadMapsNestedDataset(t *testing.T) {
 	if prize.Year != 1901 || prize.Share != 1 || len(prize.Affiliations) != 1 || prize.Affiliations[0].City != "Munich" {
 		t.Fatalf("unexpected prize: %+v", prize)
 	}
+	if count := len(records[1].Prizes[0].Affiliations); count != 0 {
+		t.Fatalf("expected empty affiliation entries to be skipped, got %d", count)
+	}
 }
 
 func TestDownloadRejectsHTTPError(t *testing.T) {
@@ -58,7 +59,25 @@ func TestDownloadRejectsHTTPError(t *testing.T) {
 		return &http.Response{StatusCode: http.StatusNotFound, Status: "404 Not Found", Body: http.NoBody}, nil
 	})}
 	_, err := Download(context.Background(), client, "https://example.test/missing")
-	if !errors.Is(err, models.ErrInvalid) {
-		t.Fatalf("expected wrapped invalid input error, got %v", err)
+	if !errors.Is(err, ErrUnexpectedStatus) {
+		t.Fatalf("expected a wrapped HTTP status error, got %v", err)
+	}
+}
+
+func TestReadFileUsesAPIFormat(t *testing.T) {
+	records, err := ReadFile(context.Background(), "../../../examples/laureates.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(records) != 3 || records[0].ID != "1" || records[0].Prizes[0].Year != 1901 {
+		t.Fatalf("unexpected local records: %+v", records)
+	}
+	if _, err := ReadFile(context.Background(), "missing.json"); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected a missing file error, got %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := ReadFile(ctx, "../../../examples/laureates.json"); !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected cancellation, got %v", err)
 	}
 }

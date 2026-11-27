@@ -1,11 +1,6 @@
 // Package models defines the stored records and application errors.
 package models
 
-import "errors"
-
-// ErrInvalid indicates invalid input.
-var ErrInvalid = errors.New("invalid laureate data")
-
 // Laureate represents a person or organization in the dataset.
 type Laureate struct {
 	ID          string  `json:"id"`

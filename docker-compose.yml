@@ -1,0 +1,39 @@
+name: ris-practice
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ris
+      POSTGRES_PASSWORD: ris
+      POSTGRES_DB: ris
+    ports:
+      - "127.0.0.1:55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ris -d ris"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts:/demo:ro
+
+  app:
+    build: .
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      DATABASE_URL: ${DATABASE_URL:-postgres://ris:ris@postgres:5432/ris?sslmode=disable}
+      SOURCE_URL: ${SOURCE_URL:-https://api.nobelprize.org/v1/laureate.json}
+      JSON_FILE: ${JSON_FILE:-}
+      LOG_PATH: ${LOG_PATH:-/app/logs/ris.log}
+      HTTP_TIMEOUT: ${HTTP_TIMEOUT:-30s}
+      SHUTDOWN_TIMEOUT: ${SHUTDOWN_TIMEOUT:-5s}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+      - ./examples:/app/examples:ro
+
+volumes:
+  postgres-data:

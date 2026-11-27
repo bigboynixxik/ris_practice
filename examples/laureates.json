@@ -19,7 +19,7 @@
       "bornCountry": "the Netherlands",
       "bornCountryCode": "NL",
       "prizes": [
-        {"year": "1902", "category": "physics", "share": "2"}
+        {"year": "1902", "category": "physics", "share": "2", "affiliations": [[]]}
       ]
     },
     {
